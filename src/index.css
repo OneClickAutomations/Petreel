@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Self-hosted display + body fonts.
+   Drop variable woff2 files into /public/fonts to activate.
+   Falls back to system-ui until then — no layout shift, no CDN.
+   ============================================================ */
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/ClashDisplay-Variable.woff2') format('woff2');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Variable.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* ---- Design tokens (single source of truth) ---- */
+:root {
+  --bg-void: #0a0a0b;
+  --bg-panel: #131316;
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --stroke: rgba(255, 255, 255, 0.08);
+  --accent: #c8ff3d;
+  --accent-warm: #ff7a45;
+  --text-hi: #f5f5f7;
+  --text-lo: #9a9aa2;
+  --radius: 18px;
+  --shadow-lift: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
+  --glow-accent: 0 0 40px -8px rgba(200, 255, 61, 0.45);
+}
+
+* {
+  border-color: var(--stroke);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-void);
+  color: var(--text-hi);
+  font-family: 'General Sans', Satoshi, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Headlines: tight, confident, slightly negative tracking */
+.font-display {
+  font-family: 'Clash Display', 'General Sans', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Glass surface utility ---- */
+@layer components {
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--stroke);
+  }
+
+  .glass-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--stroke);
+  }
+
+  /* Primary accent pill button */
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3
+           font-semibold text-black transition-all duration-300 ease-intent;
+    background: var(--accent);
+  }
+  .btn-accent:hover {
+    box-shadow: var(--glow-accent);
+    transform: scale(1.03);
+  }
+  .btn-accent:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5
+           font-medium text-text-hi transition-all duration-300 ease-intent;
+    background: transparent;
+    border: 1px solid var(--stroke);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-glass);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Dark scrim used over hero / auth video so text stays AA-legible */
+  .scrim {
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 11, 0.4) 0%,
+      rgba(10, 10, 11, 0.55) 45%,
+      rgba(10, 10, 11, 0.95) 100%
+    );
+  }
+}
+
+/* Text-gradient accent for occasional hero emphasis */
+.text-glow {
+  color: var(--accent);
+  text-shadow: 0 0 32px rgba(200, 255, 61, 0.35);
+}
+
+/* Hide scrollbars on horizontal scroll strips but keep function */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Reduced motion: honour the OS setting everywhere ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Custom focus ring for keyboard users across the app */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
