@@ -24,15 +24,22 @@ export default async function handler(req, res) {
       headers: hfHeaders(),
     });
 
-    const status = data?.status;
+    const status = data?.status || data?.data?.status;
 
     if (status === 'completed') {
-      return res.status(200).json({
-        status: 'done',
-        progress: 1,
-        resultUrl: data?.video?.url || '',
-        posterUrl: data?.images?.[0]?.url || '',
-      });
+      const resultUrl =
+        data?.video?.url || data?.data?.video?.url || data?.output?.video?.url || '';
+      const posterUrl =
+        data?.images?.[0]?.url || data?.data?.images?.[0]?.url || '';
+      if (!resultUrl) {
+        const raw = JSON.stringify(data).slice(0, 600);
+        console.error('[api/generate-status] completed with no video url:', raw);
+        return res.status(200).json({
+          status: 'error',
+          error: `Higgsfield marked the job complete but returned no video URL. Raw response: ${raw}`,
+        });
+      }
+      return res.status(200).json({ status: 'done', progress: 1, resultUrl, posterUrl });
     }
 
     if (status === 'failed' || status === 'nsfw') {
@@ -45,11 +52,18 @@ export default async function handler(req, res) {
       });
     }
 
-    const elapsed = Date.now() - startedAt;
-    const progress = Math.min(0.92, elapsed / ESTIMATED_TOTAL_MS);
+    if (status === 'queued' || status === 'in_progress') {
+      const elapsed = Date.now() - startedAt;
+      const progress = Math.min(0.92, elapsed / ESTIMATED_TOTAL_MS);
+      return res.status(200).json({ status: status === 'queued' ? 'queued' : 'processing', progress });
+    }
+
+    // Unknown status shape — surface the raw payload instead of polling forever.
+    const raw = JSON.stringify(data).slice(0, 600);
+    console.error('[api/generate-status] unrecognized status response:', raw);
     return res.status(200).json({
-      status: status === 'queued' ? 'queued' : 'processing',
-      progress,
+      status: 'error',
+      error: `Unrecognized status response from Higgsfield. Raw response: ${raw}`,
     });
   } catch (err) {
     console.error('[api/generate-status]', err);

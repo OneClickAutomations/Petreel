@@ -53,8 +53,13 @@ export default async function handler(req, res) {
       }),
     });
 
-    const requestId = job?.request_id;
-    if (!requestId) throw new Error('Higgsfield did not return a request_id for this job.');
+    const requestId =
+      job?.request_id || job?.id || job?.job_id || job?.data?.request_id || job?.data?.id;
+    if (!requestId) {
+      const raw = JSON.stringify(job).slice(0, 600);
+      console.error('[api/generate] unexpected submit response:', raw);
+      throw new Error(`Higgsfield did not return a request_id for this job. Raw response: ${raw}`);
+    }
 
     // Encode the start time into the opaque jobId so the status endpoint can
     // synthesize a smooth progress percentage without any server-side storage.
