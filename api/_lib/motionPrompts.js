@@ -17,16 +17,18 @@
 
 const IDENTITY_GUARD =
   'This is a real photograph of a real pet, not an illustration or 3D render. ' +
-  'Keep the exact same animal throughout every frame: identical fur color, coat pattern, markings, ear shape, face structure, eye color, and body proportions as the source photo — do not change or reinterpret its identity. ' +
-  'Photorealistic, natural fur and skin texture with visible detail — never smooth, waxy, plastic, or CGI-looking. ' +
+  'The ears must keep their exact original size, length, and shape (do not shrink, round off, or reshape the ears) throughout every frame. ' +
+  'The face must keep its exact original proportions, muzzle length, and structure — do not compress, narrow, or reshape the face or skull toward a different breed. ' +
+  'Keep the exact same animal throughout every frame: identical fur color, coat pattern, markings, eye color, and body proportions as the source photo — do not change or reinterpret its identity or breed. ' +
+  'Photorealistic, natural fur and skin texture with fine visible detail — never smooth, airbrushed, waxy, plastic, or CGI-looking. ' +
   'No morphing, no warping of the face or ears, no extra or duplicated limbs, no floating particles or debris, no anatomical distortion, no motion blur artifacts.';
 
 const MOTION_ACTIONS = {
   blink: 'The pet slowly closes and opens its eyes in one calm, deliberate blink. Everything else — pose, background, framing — stays completely still.',
-  'head-tilt': 'The pet tilts its head curiously to one side and gently back, ears moving naturally. The rest of the body stays in place.',
-  zoomies: 'The pet shifts its weight and takes a few playful, energetic steps in place, ears bouncing slightly, full of joy — natural, grounded movement, not an extreme sprint.',
-  'run-to-camera': 'The pet leans forward and takes a few bounding steps toward the camera, ears bouncing, getting slightly closer — natural, grounded movement, not an extreme sprint.',
-  'slow-mo-hero': 'The pet shifts into a proud, heroic stance, fur gently ruffled by a light breeze, in slow, deliberate motion. Dramatic but natural lighting.',
+  'head-tilt': 'The pet tilts its head slightly to one side and gently back, a small, subtle movement. The rest of the body stays in place.',
+  zoomies: 'The pet shifts its weight playfully from side to side in place, tail wagging, full of joy — small, natural movement, almost no change in pose or camera angle.',
+  'run-to-camera': 'The pet leans forward slightly and takes one or two small steps toward the camera — small, natural movement, almost no change in pose or camera angle.',
+  'slow-mo-hero': 'The pet holds a proud stance while its fur gently ruffles in a light breeze — a small, slow, subtle movement, almost no change in pose.',
   'memory-mode': 'The pet looks peacefully at the camera and breathes softly, calm and still, with only the gentlest natural movement. Tender, warm, nostalgic light.',
 };
 
