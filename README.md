@@ -30,11 +30,28 @@ Nothing sensitive is hardcoded. Copy `.env.example` → `.env` and fill in:
 | --- | --- | --- |
 | Auth | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | `src/lib/supabaseClient.js` (swap the mock for `createClient`) |
 | Payments | `VITE_STRIPE_PUBLISHABLE_KEY` | `src/pages/dashboard/Credits.jsx` (`buy()` is stubbed) |
-| Generation | `VITE_GENERATION_API_URL` | `src/lib/generation.js` (POST job / poll status) |
+| Generation | `HIGGSFIELD_API_KEY`, `HIGGSFIELD_API_SECRET` (server-only) | `api/generate.js`, `api/generate-status.js`, `api/health.js` |
 | Media host | `VITE_MEDIA_BASE_URL` | `src/config/media.js` |
 
-The generation key (Higgsfield / Gemini) is **never** used in the browser — the
-frontend only talks to your backend endpoint, which holds the secret.
+### Generation backend (live on Vercel)
+
+The Create flow calls this repo's own serverless functions under `/api`,
+which hold your Higgsfield credentials server-side and call
+`platform.higgsfield.ai` directly — the browser never sees the secret key.
+
+**To enable real generation on Vercel:**
+1. Project → Settings → Environment Variables, add:
+   - `HIGGSFIELD_API_KEY` = your API Key ID
+   - `HIGGSFIELD_API_SECRET` = your API Secret Key
+2. Redeploy.
+3. In the app, go to Settings → Generation backend → **Test connection** to
+   confirm the credentials work before generating.
+
+Without these set, `/api/generate` returns a clear 500 error explaining the
+credentials are missing — the app does **not** silently fall back to fake
+output on a real deployment. The only place it falls back to a mock is local
+`npm run dev` (no `/api` routes running), so the create flow still works
+offline for UI development.
 
 ## Dropping in media
 

@@ -8,6 +8,21 @@ export default function Settings() {
   const navigate = useNavigate();
   const [prefs, setPrefs] = useState({ productEmails: true, resultReady: true });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const checkConnection = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      if (data.ok) toast.success('Higgsfield connection is working ✨');
+      else toast.error(data.error || 'Higgsfield connection failed.');
+    } catch {
+      toast.error('Could not reach /api/health — is this running on Vercel?');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const doSignOut = async () => {
     await signOut();
@@ -41,6 +56,15 @@ export default function Settings() {
         />
         <button onClick={() => toast.success('Preferences saved')} className="btn-accent mt-2 py-2 text-sm">
           Save preferences
+        </button>
+      </Card>
+
+      <Card title="Generation backend">
+        <p className="text-sm text-text-lo">
+          Checks that the server has valid Higgsfield credentials configured.
+        </p>
+        <button onClick={checkConnection} disabled={checking} className="btn-ghost py-2 text-sm disabled:opacity-60">
+          {checking ? 'Checking…' : 'Test connection'}
         </button>
       </Card>
 

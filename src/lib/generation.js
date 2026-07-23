@@ -1,63 +1,77 @@
 /**
- * Thin generation fetch layer — SCAFFOLD.
+ * Thin generation fetch layer.
  *
- * Media generation runs server-side (owner's backend calls Higgsfield/Gemini
- * with the secret key — never the browser). The frontend POSTs a job and polls
- * for status. Point VITE_GENERATION_API_URL at that backend to go live.
+ * By default this calls our own same-origin Vercel serverless functions
+ * (/api/generate, /api/generate-status), which hold the real Higgsfield
+ * credentials server-side and call platform.higgsfield.ai — see api/generate.js.
  *
- * Contract the UI expects:
- *   POST {API}/jobs        -> { jobId }
- *   GET  {API}/jobs/:id    -> { status: 'queued'|'processing'|'done'|'error',
- *                               progress?: 0..1, resultUrl?, posterUrl? }
+ * Set VITE_GENERATION_API_URL to point at a fully separate backend instead
+ * (e.g. a non-Vercel deployment); the same /generate + /generate-status
+ * contract applies.
  *
- * With no API configured we simulate the async lifecycle so the create flow —
- * progress states, polling, confetti reveal — is fully exercisable offline.
+ * If neither is reachable — e.g. running `npm run dev` locally without
+ * `vercel dev`, where /api/* doesn't exist — this transparently falls back
+ * to an in-memory mock so the create flow still works offline. Once our own
+ * API route DOES respond (even with an error), that response is always
+ * surfaced rather than masked, so misconfiguration (missing keys, bad
+ * credentials, no credits) is visible instead of silently faked.
  */
 
-const API = import.meta.env.VITE_GENERATION_API_URL?.replace(/\/$/, '') ?? '';
+const EXPLICIT_API = import.meta.env.VITE_GENERATION_API_URL?.replace(/\/$/, '') ?? '';
+const API_BASE = EXPLICIT_API || '/api';
 
-export const isGenerationLive = !!API;
+class NoBackendError extends Error {}
 
-export async function createJob(payload) {
-  if (API) {
-    const res = await fetch(`${API}/jobs`, {
+async function postJSON(url, body) {
+  let res;
+  try {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error('Failed to start generation');
-    return res.json();
+  } catch {
+    throw new NoBackendError();
   }
-  // --- mock ---
-  const jobId = 'mock_' + Math.random().toString(36).slice(2, 10);
-  MOCK_JOBS.set(jobId, { started: Date.now(), payload });
-  return { jobId };
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    // Not JSON — our routes always return JSON, so this means no real
+    // backend answered (e.g. local `vite dev` serving its SPA fallback).
+    throw new NoBackendError();
+  }
+  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  return data;
+}
+
+async function getJSON(url) {
+  const res = await fetch(url);
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Unexpected response from the generation backend.');
+  }
+  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  return data;
+}
+
+export async function createJob(payload) {
+  try {
+    return await postJSON(`${API_BASE}/generate`, payload);
+  } catch (err) {
+    if (!(err instanceof NoBackendError)) throw err;
+    // --- mock fallback (no backend reachable) ---
+    const jobId = 'mock_' + Math.random().toString(36).slice(2, 10);
+    MOCK_JOBS.set(jobId, { started: Date.now(), payload });
+    return { jobId };
+  }
 }
 
 export async function getJob(jobId) {
-  if (API) {
-    const res = await fetch(`${API}/jobs/${jobId}`);
-    if (!res.ok) throw new Error('Failed to fetch job');
-    return res.json();
-  }
-  // --- mock: ~6s lifecycle ---
-  const job = MOCK_JOBS.get(jobId);
-  if (!job) return { status: 'error' };
-  const elapsed = Date.now() - job.started;
-  const total = 6000;
-  if (elapsed >= total) {
-    return {
-      status: 'done',
-      progress: 1,
-      // reuse the chosen motion's preview loop as the "result" in mock mode
-      resultUrl: job.payload?.previewSrc || '',
-      posterUrl: job.payload?.stillUrl || '',
-    };
-  }
-  return {
-    status: elapsed < 900 ? 'queued' : 'processing',
-    progress: Math.min(0.95, elapsed / total),
-  };
+  if (jobId.startsWith('mock_')) return getMockJob(jobId);
+  return getJSON(`${API_BASE}/generate-status?jobId=${encodeURIComponent(jobId)}`);
 }
 
 /**
@@ -73,7 +87,7 @@ export async function generateAndPoll(payload, { onProgress, signal } = {}) {
         const job = await getJob(jobId);
         onProgress?.(job);
         if (job.status === 'done') return resolve({ ...job, jobId });
-        if (job.status === 'error') return reject(new Error('Generation failed'));
+        if (job.status === 'error') return reject(new Error(job.error || 'Generation failed'));
         setTimeout(tick, 700);
       } catch (err) {
         reject(err);
@@ -83,4 +97,25 @@ export async function generateAndPoll(payload, { onProgress, signal } = {}) {
   });
 }
 
+/* ---- mock fallback (only used when no real backend is reachable) ---- */
+
 const MOCK_JOBS = new Map();
+
+function getMockJob(jobId) {
+  const job = MOCK_JOBS.get(jobId);
+  if (!job) return { status: 'error', error: 'Unknown job.' };
+  const elapsed = Date.now() - job.started;
+  const total = 6000;
+  if (elapsed >= total) {
+    return {
+      status: 'done',
+      progress: 1,
+      resultUrl: job.payload?.previewSrc || '',
+      posterUrl: job.payload?.stillUrl || '',
+    };
+  }
+  return {
+    status: elapsed < 900 ? 'queued' : 'processing',
+    progress: Math.min(0.95, elapsed / total),
+  };
+}

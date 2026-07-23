@@ -5,6 +5,7 @@ import { IconUpload, IconDownload, IconShare, IconSparkle, IconClose } from '../
 import { motions, formats, GENERATE_COST } from '../../config/media';
 import { useAuth } from '../../context/AuthContext';
 import { generateAndPoll } from '../../lib/generation';
+import { resizeImageToBase64 } from '../../lib/imageResize';
 import { addReel } from '../../lib/reelsStore';
 import { toast } from '../../lib/toast';
 
@@ -46,7 +47,7 @@ export default function Create() {
     if (!file) return;
     if (!file.type.startsWith('image/')) return toast.error('Please choose an image file.');
     if (photo?.url) URL.revokeObjectURL(photo.url);
-    setPhoto({ url: URL.createObjectURL(file), name: file.name });
+    setPhoto({ url: URL.createObjectURL(file), name: file.name, file });
   };
 
   const onGenerate = async () => {
@@ -58,13 +59,20 @@ export default function Create() {
     setProgress(0);
     abortRef.current = new AbortController();
     try {
+      // enhance ON sends more detail (larger/less-compressed upload); OFF
+      // trades fidelity for a faster, lighter upload.
+      const { base64, contentType } = await resizeImageToBase64(
+        photo.file,
+        enhance ? { maxDim: 1600, quality: 0.92 } : { maxDim: 1024, quality: 0.78 }
+      );
       const job = await generateAndPoll(
         {
           motion: motionId,
           format,
-          enhance,
+          imageBase64: base64,
+          contentType,
           stillUrl: photo.url,
-          previewSrc: motion?.videoSrc, // mock uses the motion loop as the result
+          previewSrc: motion?.videoSrc, // used only by the offline mock fallback
         },
         {
           signal: abortRef.current.signal,
@@ -84,7 +92,9 @@ export default function Create() {
       setPhase('result');
       toast.success('Your Reel is ready ✨');
     } catch (err) {
-      if (err?.name !== 'AbortError') toast.error('Generation failed. Please try again.');
+      if (err?.name !== 'AbortError') {
+        toast.error(err?.message || 'Generation failed. Please try again.');
+      }
       setPhase('build');
     }
   };
