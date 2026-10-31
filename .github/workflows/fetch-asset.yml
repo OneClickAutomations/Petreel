@@ -1,0 +1,27 @@
+name: Fetch external asset
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to fetch'
+        required: true
+      outpath:
+        description: 'Output path in repo'
+        required: true
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          mkdir -p "$(dirname "${{ github.event.inputs.outpath }}")"
+          curl -sSL -o "${{ github.event.inputs.outpath }}" "${{ github.event.inputs.url }}"
+          ls -la "${{ github.event.inputs.outpath }}"
+      - name: Commit
+        run: |
+          git config user.name "asset-relay-bot"
+          git config user.email "actions@github.com"
+          git add "${{ github.event.inputs.outpath }}"
+          git commit -m "Relay fetched asset: ${{ github.event.inputs.outpath }}" || echo "nothing to commit"
+          git push origin HEAD:audio-relay
