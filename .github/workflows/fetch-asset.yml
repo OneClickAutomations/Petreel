@@ -8,11 +8,15 @@ on:
       outpath:
         description: 'Output path in repo'
         required: true
+permissions:
+  contents: write
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: audio-relay
       - name: Download
         run: |
           mkdir -p "$(dirname "${{ github.event.inputs.outpath }}")"
@@ -22,6 +26,8 @@ jobs:
         run: |
           git config user.name "asset-relay-bot"
           git config user.email "actions@github.com"
-          git add "${{ github.event.inputs.outpath }}"
+          git add -f "${{ github.event.inputs.outpath }}"
           git commit -m "Relay fetched asset: ${{ github.event.inputs.outpath }}" || echo "nothing to commit"
-          git push origin HEAD:audio-relay
+          git push "https://x-access-token:${GH_TOKEN}@github.com/OneClickAutomations/Petreel.git" HEAD:audio-relay
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
